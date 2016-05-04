@@ -33,6 +33,7 @@ searchData3 <- read.csv(paste0(basePath, "20160211_SearchDownload_part3.csv"), h
 searchData <- as.data.table(rbind(searchData1,searchData2,searchData3))
 rm(list = c("searchData1","searchData2","searchData3"))
 
+
 # evaluation data
 evalData <- as.data.table(read.csv(paste0(basePath, "Evaluation Data Set.csv"), header = T))
 # submission file
@@ -77,3 +78,27 @@ all.equal(evalData, submissionData)
 # [1] TRUE
 # the two data sets are the same.
 
+###########################################
+######## Cleaning searchData ##############
+###########################################
+
+# clean date formats
+searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
+searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
+searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
+searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
+searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
+
+# basic stats
+numObservations   <- nrow(searchData)
+numDownloads      <- sum(!is.na(searchData$DownloadTime))
+proportionSuccess <- numDownloads/numObservations
+proportionSuccess
+# [1] 0.5769709
+
+# time between searches for each user
+setkey(searchData, PIDX)
+searchData <- searchData[order(PIDX, SearchTime),]
+searchData <- searchData[, timeSinceLastSearch:= c(NA, diff(as.numeric(SearchTime))), by = PIDX]
+
+View(searchData)

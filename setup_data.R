@@ -44,9 +44,6 @@ submissionData <- as.data.table(read.csv(paste0(basePath, "Submission_File.csv")
 basePath3 <- "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/Beat the Know seacrh - new data 04-14/"
 featuredDocs <- as.data.table(read.csv(paste0(basePath3, "Featured Documents.csv"), header = T))
 
-basePath3 <- "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/Beat the Know seacrh - new data 04-14/"
-featuredDocs <- as.data.table(read.csv(paste0(basePath3, "Featured Documents.csv"), header = T))
-
 # what documents does current know search return. Note that searches before these documents were created would not have returned those docs.
 solrSearchData <- as.data.table(read.csv(paste0(basePath3, "Joined all Solr results.csv"), header = T))
 
@@ -102,3 +99,14 @@ searchData <- searchData[order(PIDX, SearchTime),]
 searchData <- searchData[, timeSinceLastSearch:= c(NA, diff(as.numeric(SearchTime))), by = PIDX]
 
 View(searchData)
+
+
+###########################################
+######## Cleaning engagementData ##########
+###########################################
+
+engagementData$PERSON_PROJECT_START_DATE <- as.Date(as.POSIXct(engagementData$PERSON_PROJECT_START_DATE, tz = "GMT"))
+engagementData$PERSON_PROJECT_END_DATE   <- as.Date(as.POSIXct(engagementData$PERSON_PROJECT_END_DATE, tz = "GMT"))
+
+View(engagementData)
+

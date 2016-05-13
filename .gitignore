@@ -1,0 +1,25 @@
+proj.user
+.Rhistory
+.RData
+.RCache
+output/
+!output/README.*
+*.jar
+### R ###
+# History files
+.Rhistory
+# Example code in package build process
+*-Ex.R
+# R data files from past sessions
+.Rdata
+.Rproj.user
+.Rproj
+*.pdf
+*.csv
+SQL/sql_info.R
+*.RData
+*.RDA
+*.rds
+*.xlsx
+.httr-oauth 
+.Rcache

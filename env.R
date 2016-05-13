@@ -101,6 +101,9 @@ load_libs <- function() {
 
   # cran packages
   required_cran_packages <- list(
+    "tm",
+    "stringr",
+
     "RUnit",
     "git2r",
     "httr",

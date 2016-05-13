@@ -2,6 +2,9 @@
 ########## Load data ##############
 ###################################
 
+#scoring table
+scoringTable <- data.frame(rank = 1:20,
+                            points = c(30, 25, 20, 18, 16:1))
 
 # document details data
 documentData1 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_Part1.csv"), header = T)

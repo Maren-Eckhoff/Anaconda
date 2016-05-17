@@ -5,7 +5,7 @@
 #scoring table
 scoringTable <- data.frame(rank = 1:20,
                             points = c(30, 25, 20, 18, 16:1))
-
+library(data.table)
 # document details data
 documentData1 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_Part1.csv"), header = T)
 documentData2 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_part2.csv"), header = T)
@@ -63,6 +63,7 @@ solrSearchData <- as.data.table(read.csv(paste0(env$basePath3, "Joined all Solr 
 
 
 
+
 #########################################
 ######## Understand documentData ########
 #########################################
@@ -86,9 +87,9 @@ solrSearchData <- as.data.table(read.csv(paste0(env$basePath3, "Joined all Solr 
 
 
 # basic stats
-numObservations   <- nrow(searchData)
-numDownloads      <- sum(!is.na(searchData$DownloadTime))
-proportionSuccess <- numDownloads/numObservations
+# numObservations   <- nrow(searchData)
+# numDownloads      <- sum(!is.na(searchData$DownloadTime))
+# proportionSuccess <- numDownloads/numObservations
 # proportionSuccess
 # [1] 0.5769709
 

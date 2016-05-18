@@ -5,7 +5,7 @@
 #scoring table
 scoringTable <- data.frame(rank = 1:20,
                             points = c(30, 25, 20, 18, 16:1))
-
+library(data.table)
 # document details data
 documentData1 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_Part1.csv"), header = T)
 documentData2 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_part2.csv"), header = T)
@@ -23,6 +23,10 @@ engagementData3 <- read.csv(paste0(env$basePath, "20160211_EngagementData_part3.
 engagementData <- as.data.table(rbind(engagementData1,engagementData2,engagementData3))
 rm(list = c("engagementData1","engagementData2","engagementData3"))
 
+# cleaning engagement data
+engagementData$PERSON_PROJECT_START_DATE <- as.Date(as.POSIXct(engagementData$PERSON_PROJECT_START_DATE, tz = "GMT"))
+engagementData$PERSON_PROJECT_END_DATE   <- as.Date(as.POSIXct(engagementData$PERSON_PROJECT_END_DATE, tz = "GMT"))
+
 # person information
 personData <- as.data.table(read.csv(paste0(env$basePath, "20160211_PersonInfo_Merged_updated.csv"), header = T))
 
@@ -33,11 +37,22 @@ searchData3 <- read.csv(paste0(env$basePath, "20160211_SearchDownload_part3.csv"
 searchData <- as.data.table(rbind(searchData1,searchData2,searchData3))
 rm(list = c("searchData1","searchData2","searchData3"))
 
+# clean search data
+searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
+searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
+searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
+searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
+searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
+
 
 # evaluation data
 evalData <- as.data.table(read.csv(paste0(env$basePath, "Evaluation Data Set.csv"), header = T))
 # submission file
 submissionData <- as.data.table(read.csv(paste0(env$basePath, "Submission_File.csv"), header = T))
+
+all.equal(evalData, submissionData)
+# [1] TRUE
+# the two data sets are the same.
 
 # featured documents: If search for one of the keywords, the top 1-5 documents shown in Know come from this list
 # convert document to csv and clean the document ID. Document 813034 has an odd letter that needs removing.
@@ -46,11 +61,12 @@ featuredDocs <- as.data.table(read.csv(paste0(env$basePath3, "Featured Documents
 # what documents does current know search return. Note that searches before these documents were created would not have returned those docs.
 solrSearchData <- as.data.table(read.csv(paste0(env$basePath3, "Joined all Solr results.csv"), header = T))
 
+
+
+
 #########################################
 ######## Understand documentData ########
 #########################################
-
-colnames(documentData)
 
 # Site_ID: List of practices that selected the document. Different practice IDs are separated by <>. Empty string if no practice selected the document.
 # Topic_ID: If a practice selected a document, it can recommend or not recommend it for certain documents. The topics are organised in a tree structure.
@@ -58,43 +74,28 @@ colnames(documentData)
 # The recommendation for X and all children of X is recoreded in Recommended_flag: Y = Recommended. N = Not receommended.
 # Different paths are separated by ## and different practices are separated by <>.
 # See also Beat the Know seacrh - new data 04-08, Description of fields, point 6).
-View(documentData)
 
-setkey(documentData, PRACTICE_RECOMMENDED)
-View(documentData["Y"])
+# setkey(documentData, PRACTICE_RECOMMENDED)
+# View(documentData["Y"])
 
 # PRACTICE_RECOMMENDED: Superficial checks suggest: Y if any practice recommends the document for anything. N if all practices who selected the document do not recommend the document.
 
 
 #########################################
-######## Understand evalData ############
+######## Basic analysis ############
 #########################################
 
-all.equal(evalData, submissionData)
-# [1] TRUE
-# the two data sets are the same.
-
-###########################################
-######## Cleaning searchData ##############
-###########################################
-
-# clean date formats
-searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
-searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
-searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
-searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
-searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
 
 # basic stats
-numObservations   <- nrow(searchData)
-numDownloads      <- sum(!is.na(searchData$DownloadTime))
-proportionSuccess <- numDownloads/numObservations
-proportionSuccess
+# numObservations   <- nrow(searchData)
+# numDownloads      <- sum(!is.na(searchData$DownloadTime))
+# proportionSuccess <- numDownloads/numObservations
+# proportionSuccess
 # [1] 0.5769709
 
 # time between searches for each user
-setkey(searchData, PIDX)
-searchData <- searchData[order(PIDX, SearchTime),]
-searchData <- searchData[, timeSinceLastSearch:= c(NA, diff(as.numeric(SearchTime))), by = PIDX]
+# setkey(searchData, PIDX)
+# searchData <- searchData[order(PIDX, SearchTime),]
+# searchData <- searchData[, timeSinceLastSearch:= c(NA, diff(as.numeric(SearchTime))), by = PIDX]
 
-View(searchData)
+

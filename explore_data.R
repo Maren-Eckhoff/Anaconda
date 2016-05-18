@@ -1,7 +1,21 @@
 
 
-
+#' depends on QBlib
 exploreKnowData <- function(){
+
+
+  # audit
+  documentData <- as.data.frame(documentData)
+  documentData[documentData == ""] <- NA
+  auditDoc <- data_audit(documentData)
+
+  personData <- as.data.frame(personData)
+  personData[personData == ""] <- NA
+  auditPerson <- data_audit(personData)
+
+  engagementData <- as.data.frame(engagementData)
+  engagementData[engagementData == ""] <- NA
+  auditEngage <- data_audit(engagementData)
 
   # remove searched w/o downloads
   searchData <- searchData[!is.na(searchData$KO_ID),]
@@ -51,6 +65,9 @@ exploreKnowData <- function(){
 
 
 
+
+
+
 dummyModel <- function(){
 
   submissionData <- as.data.frame(submissionData)
@@ -83,7 +100,5 @@ dummyModel <- function(){
 
   write.table(bound_df, "output/dummyModel.csv", sep = ",", row.names = FALSE, qmethod = "double")
 
-  write.table(submission, gsub(" ", "_", paste0(data_dir, "submission_", gsub("[[:punct:]]", "_", as.character(d)), ".csv")),
-              qmethod = "double", sep=",", row.names = F)
 
 }

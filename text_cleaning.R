@@ -8,10 +8,10 @@ searchTermToDocumentMap <- data.table(SEARCHED_TERM = unique(c(levels(searchData
 # [1] 625015
 
 # prepare solrSearch table
-solrSearchWithResult <- solrSearchData[!solrSearchData$Results=="",]
+solrSearchWithResult <- solrSearchData[!solrSearchData$Results == "",]
 solrSearchWithResult <- solrSearchWithResult[, strsplit(as.character(Results), ",", fixed = T), by = terms]
 colnames(solrSearchWithResult) <- c("terms", "docID")
-solrSearchWithResult <- solrSearchWithResult[, solrRank := 1:.N, by = terms] 
+solrSearchWithResult <- solrSearchWithResult[, solrRank := 1:.N, by = terms]
 
 # join the solr search results to search terms
 setkey(searchTermToDocumentMap,SEARCHED_TERM)

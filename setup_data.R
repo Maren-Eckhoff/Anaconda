@@ -4,7 +4,7 @@
 
 #scoring table
 scoringTable <- data.frame(rank = 1:20,
-                            points = c(30, 25, 20, 18, 16:1))
+                            points = c(30, 25, 21, 18, 16:1))
 library(data.table)
 # document details data
 documentData1 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_Part1.csv"), header = T)
@@ -37,12 +37,7 @@ searchData3 <- read.csv(paste0(env$basePath, "20160211_SearchDownload_part3.csv"
 searchData <- as.data.table(rbind(searchData1,searchData2,searchData3))
 rm(list = c("searchData1","searchData2","searchData3"))
 
-# clean search data
-searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
-searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
-searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
-searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
-searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
+
 
 
 # evaluation data
@@ -62,6 +57,13 @@ featuredDocs <- as.data.table(read.csv(paste0(env$basePath3, "Featured Documents
 solrSearchData <- as.data.table(read.csv(paste0(env$basePath3, "Joined all Solr results.csv"), header = T))
 
 
+
+# clean search data
+searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
+searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
+searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
+searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
+searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
 
 
 #########################################

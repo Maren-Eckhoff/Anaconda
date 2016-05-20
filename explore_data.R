@@ -1,7 +1,7 @@
 
 
-#' depends on QBlib
-exploreKnowData <- function(){
+#
+exploreAnacondaData <- function(){
 
 
   # audit
@@ -17,19 +17,42 @@ exploreKnowData <- function(){
   engagementData[engagementData == ""] <- NA
   auditEngage <- data_audit(engagementData)
 
+
+}
+
+
+
+
+#
+processSearchData <- function(){
+
   # remove searched w/o downloads
-  searchData <- searchData[!is.na(searchData$KO_ID),]
+  searchDataProcessed <- searchData[!is.na(searchData$KO_ID),]
+
+  # count how many times a document has been downloaded at any user, search-time and search-term pair
+  searchDataProcessed <- searchDataProcessed[, list(nDownloads = .N), by = c( "PIDX", "SEARCHED_TERM", "KO_ID", "SearchTime")]
 
   # no puncutation, no extra sapces
-  searchData$SEARCHED_TERM_cleaned <- tm::removePunctuation(as.character(searchData$SEARCHED_TERM))
-  searchData$SEARCHED_TERM_cleaned <- gsub("\\s+", " ", searchData$SEARCHED_TERM_cleaned)
+  searchDataProcessed$SEARCHED_TERM_cleaned <- tm::removePunctuation(as.character(searchDataProcessed$SEARCHED_TERM))
+  searchDataProcessed$SEARCHED_TERM_cleaned <- gsub("\\s+", " ", searchDataProcessed$SEARCHED_TERM_cleaned)
+
+  return(searchDataProcessed)
+
+}
+
+
+
+
+exploreKnowData <- function(){
+
+  if (!exists("searchDataProcessed")){searchDataProcessed <- processSearchData()}
 
   solrSearchData$terms_cleaned <- tm::removePunctuation(as.character(solrSearchData$terms))
   solrSearchData$terms_cleaned <- gsub("\\s+", " ", solrSearchData$terms_cleaned)
   solrSearchData <- solrSearchData[solrSearchData$terms_cleaned != "\\s+",]
 
   # joined downloads with solr results
-  joinedSolrWithDowloads <- merge(as.data.frame(searchData), as.data.frame(solrSearchData), by.x = "SEARCHED_TERM", by.y = "terms")
+  joinedSolrWithDowloads <- merge(as.data.frame(searchDataProcessed), as.data.frame(solrSearchData), by.x = "SEARCHED_TERM", by.y = "terms")
 
   joinedSolrWithDowloads$Results <- as.character(joinedSolrWithDowloads$Results)
 
@@ -48,22 +71,33 @@ exploreKnowData <- function(){
     min(which(unlist(strsplit(joinedSolrWithDowloads[x,"Results"], ",")) == as.character(joinedSolrWithDowloads[x, "KO_ID"])))
   })
 
-  # add points next to ranks
-  result <- merge(joinedSolrWithDowloads,scoringTable, by.x = "rankReturnedByKnow", by.y = "rank", all.x = TRUE)
-  result$points[is.na(result$points)] <- 0
-
-
-  result$SearchTime <- as.character(result$SearchTime)
-  result <- as.data.table(result)
-
-  searchScores <- result[, list(score = sum(points),
-                                nHits = .N), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
-
+  return(joinedSolrWithDowloads)
 }
 
 
 
 
+scoreAnacondaRanking <- function(rankedSearchDocuments, rankColumn =  "rankReturnedByKnow"){
+
+  # add points next to ranks
+  result <- merge(rankedSearchDocuments, scoringTable, by.x = rankColumn, by.y = "rank", all.x = TRUE)
+  result$points[is.na(result$points)] <- 0
+
+  result$SearchTime <- as.character(result$SearchTime)
+  result <- as.data.table(result)
+
+  searchScores <- result[, list(score = sum(points),
+                                nHits = sum(isReturnedByKnow == TRUE)), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
+
+  # find max score achievable with KNow results
+  searchScores$nHits <- ifelse(searchScores$nHits > 20, 20, searchScores$nHits)
+
+  maxScoreTable <- data.frame(nHits = 1:20, maxScore = cumsum(scoringTable$points))
+  searchScores <- as.data.frame(merge(searchScores, maxScoreTable, by = "nHits", all.x = TRUE))
+  searchScores$maxScore[is.na(searchScores$maxScore)] <- 0
+
+  return(searchScores)
+}
 
 
 

@@ -1,23 +1,36 @@
 
 
 #
-exploreAnacondaData <- function(){
+processDocumentData <- function(){
 
+  # read (code by Maren E)
+  documentData1 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_Part1.csv"), header = T)
+  documentData2 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_part2.csv"), header = T)
+  documentData3 <- read.csv(paste0(env$basePath, "20160211_DocumentDetails_part3.csv"), header = T)
+  documentData <- as.data.table(rbind(documentData1,documentData2,documentData3))
+  rm(list = c("documentData1", "documentData2", "documentData3"))
 
-  # audit
-  documentData <- as.data.frame(documentData)
+  # clean
   documentData[documentData == ""] <- NA
-  auditDoc <- data_audit(documentData)
+  documentData$Authored.date <- as.Date(documentData$Authored.date)
+  auditDoc <- data_audit(as.data.frame(documentData))
 
-  personData <- as.data.frame(personData)
+  assign("documentData", documentData, envir = globalenv())
+
+}
+
+
+processPersonData <- function(){
+
+  personData <- as.data.table(read.csv(paste0(env$basePath, "20160211_PersonInfo_Merged_updated.csv"), header = T))
+
   personData[personData == ""] <- NA
-  auditPerson <- data_audit(personData)
+  personData$HIRE_DATE <- as.Date(dmy(paste0("01-", personData$HIRE_DATE)))
+  auditPerson <- data_audit(as.data.frame(personData))
 
-  engagementData <- as.data.frame(engagementData)
-  engagementData[engagementData == ""] <- NA
-  auditEngage <- data_audit(engagementData)
-
-
+  # engagementData[engagementData == ""] <- NA
+  # auditEngage <- data_audit(as.data.frame(engagementData))
+  assign("personData", personData, envir = globalenv())
 }
 
 
@@ -42,6 +55,23 @@ processSearchData <- function(){
 
 
 
+meltSolrResults <- function(){
+
+  # prepare solrSearch table
+  solrSearchWithResult <- solrSearchData[!solrSearchData$Results == "",]
+  solrSearchWithResult <- solrSearchWithResult[, strsplit(as.character(Results), ",", fixed = T), by = terms]
+  colnames(solrSearchWithResult) <- c("terms", "docID")
+  solrSearchWithResult <- solrSearchWithResult[, solrRank := 1:.N, by = terms]
+
+  return(solrSearchWithResult)
+}
+
+
+exploreDocData <- function(){
+
+  documentData$Authored.date <- as.Date(documentData$Authored.date)
+}
+
 
 exploreKnowData <- function(){
 
@@ -50,6 +80,8 @@ exploreKnowData <- function(){
   solrSearchData$terms_cleaned <- tm::removePunctuation(as.character(solrSearchData$terms))
   solrSearchData$terms_cleaned <- gsub("\\s+", " ", solrSearchData$terms_cleaned)
   solrSearchData <- solrSearchData[solrSearchData$terms_cleaned != "\\s+",]
+
+  searchTermFreq <- searchDataProcessed[, list(nSearches = length(unique(SearchTime))), by = SEARCHED_TERM]
 
   # joined downloads with solr results
   joinedSolrWithDowloads <- merge(as.data.frame(searchDataProcessed), as.data.frame(solrSearchData), by.x = "SEARCHED_TERM", by.y = "terms")

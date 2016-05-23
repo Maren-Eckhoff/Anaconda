@@ -59,12 +59,20 @@ solrSearchData <- as.data.table(read.csv(paste0(env$basePath3, "Joined all Solr 
 
 
 # clean search data
-searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
-searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
-searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
-searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
-searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
+# searchData$SearchTime           <- as.POSIXct(searchData$SearchTime, tz = "GMT")
+# searchData$NextSearchTime[searchData$NextSearchTime == ""] <- NA
+# searchData$NextSearchTime       <- as.POSIXct(searchData$NextSearchTime, tz = "GMT")
+# searchData$DownloadTime[searchData$DownloadTime == ""]     <- NA
+# searchData$DownloadTime         <- as.POSIXct(searchData$DownloadTime, tz = "GMT")
+#
 
+# clean time-shit ;)
+searchData$SearchTime_ymd_hms <- ymd_hms(searchData$SearchTime, tz = "GMT")
+searchData$SearchTime_dmy_hm <- dmy_hm(searchData$SearchTime, tz = "GMT")
+searchData$SearchTime <- searchData$SearchTime_ymd_hms
+searchData$SearchTime[is.na(searchData$SearchTime)] <- searchData$SearchTime_dmy_hm[is.na(searchData$SearchTime)]
+
+searchData <- searchData[, !(names(searchData) %in% c("SearchTime_ymd_hms", "SearchTime_dmy_hm")), with = FALSE]
 
 #########################################
 ######## Understand documentData ########

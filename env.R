@@ -171,13 +171,13 @@ load_libs <- function() {
     if (!(pkg %in% installed_pkgs))
       p_install_gh(author_pkg)
   }
-  #
-  # if(!require("QBlib")) {
-  #   message("Installing QBlib from server...")
-  #   install.packages("QBlib", repos="https://qb:qu4ntum8@shinyr.quantumblack.com/Rpkgs/", type="source")
-  # }
-  #
-  # library("QBlib")
+
+  if(!require("QBlib")) {
+    message("Installing QBlib from server...")
+    install.packages("QBlib", repos="https://qb:qu4ntum8@shinyr.quantumblack.com/Rpkgs/", type="source")
+  }
+
+  library("QBlib")
 }
 
 

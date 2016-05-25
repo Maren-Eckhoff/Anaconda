@@ -35,7 +35,7 @@ prepareClassficationData <- function(){
 buildClassificationData <- function(){
 
   binaryDownloadData <- prepareClassficationData()
-  binaryDownloadData$SearchTime <- as.Date(binaryDownloadData$SearchTime)
+  binaryDownloadData$SearchTime <- as.character(binaryDownloadData$SearchTime)
 
   # join with Document Cols
   processDocumentData()
@@ -57,7 +57,7 @@ buildClassificationData <- function(){
   setkey(binaryDownloadData, KO_ID)
   result <- documentData[binaryDownloadData, nomatch=0]
   # only doc authored before the date of search
-  result <- result[result$SearchTime > result$Authored.date]
+  result <- result[as.Date(result$SearchTime) > result$Authored.date]
 
 
   # join with Person Cols
@@ -77,7 +77,7 @@ buildClassificationData <- function(){
   setkey(result, PIDX)
   result <- personData[result, nomatch=0]
 
-  result[, seniorityInDays := as.integer(SearchTime - HIRE_DATE),]
+  result[, seniorityInDays := as.integer(as.Date(SearchTime) - HIRE_DATE),]
 
   assign("classifData", result, envir = globalenv())
 }
@@ -85,10 +85,11 @@ buildClassificationData <- function(){
 
 
 
+
 processClassificationData <- function(dframe){
 
   depVar <- "IsDownloaded"
-  indepVars <- setdiff(names(dframe), c(depVar, "PERSON_ID", "HIRE_DATE", "DOC.ID", "Authored.date"
+  indepVars <- setdiff(names(dframe), c(depVar, "PERSON_ID", "HIRE_DATE", "DOC.ID", "Authored.date", "Last.Review.Date"
                                              , "SEARCHED_TERM", "SearchTime", "nDownloads"
                                              ,  "SEARCHED_TERM_cleaned", "SearchDate",  "nDocumentsDowloaded" ))
 
@@ -103,10 +104,106 @@ processClassificationData <- function(dframe){
   message(paste0("Categorical Independent Variables: ", paste(categoricalVars, collapse = ", ")))
 
   # build dummy vars
-  out <- CreateDummyVariables(dataA = dframe, categoricalFeatures = categoricalVars, min.count = 1000)
+  out <- CreateDummyVariables(dataA = dframe, categoricalFeatures = categoricalVars, min.count = nrow(dframe) * 0.05)
   dframe <- out$first
+
+  return(dframe)
+}
+
+
+
+
+
+splitAnacondaData <- function(dframe){
+
+  dt <- as.data.table(dframe)
+  searchInstances <- dt[,list(nrows = .N) ,by = c( "PERSON_ID", "SEARCHED_TERM",  "SearchTime") ]
+
+  # split into
+  outSD <- splitData(data = as.data.frame(searchInstances), trainPercent = 70)
+  trainInstances <- as.data.table(outSD$trainData)
+  testInstances <- as.data.table(outSD$testData)
+
+  setkeyv(dt, c( "PERSON_ID", "SEARCHED_TERM",  "SearchTime"))
+  setkeyv(trainInstances, c("PERSON_ID", "SEARCHED_TERM",  "SearchTime"))
+  trainDf <- as.data.frame(dt[trainInstances, nomatch = 0])
+  setkeyv(testInstances, c("PERSON_ID", "SEARCHED_TERM",  "SearchTime"))
+  testDf <- as.data.frame(dt[testInstances, nomatch = 0])
+
+  assign("trainDf", trainDf, envir = globalenv())
+  assign("testDf", testDf, envir = globalenv())
 
 }
 
 
+fitModel <- function(){
+
+  depVar <- "IsDownloaded"
+  indepVars <- setdiff(names(trainDf), c(depVar, "PERSON_ID", "HIRE_DATE", "DOC.ID", "Authored.date", "Last.Review.Date"
+                                        , "SEARCHED_TERM", "SearchTime", "nDownloads"
+                                        ,  "SEARCHED_TERM_cleaned", "SearchDate",  "nDocumentsDowloaded"
+                                        , "nrows"))
+
+  trainDf <- trainDf[complete.cases(trainDf[, c(depVar, indepVars)]), ]
+
+  startTime <- proc.time()
+  lasso.binomial <- glmnet(x = data.matrix(trainDf[, indepVars])
+                                 , y = as.factor(trainDf[, depVar])
+                                 , standardize = TRUE, family = "binomial")
+  timeDiff <- proc.time() - startTime
+  message(paste0("fitting a glmnet took ", timeDiff[["elapsed"]], " seconds"))
+
+  startTime <- proc.time()
+  cv.lasso.binomial <- cv.glmnet(x = data.matrix(trainDf[, indepVars])
+                              , y = as.factor(trainDf[, depVar])
+                              , standardize = TRUE, nfolds = 10, family = "binomial", parallel = TRUE)
+  timeDiff <- proc.time() - startTime
+  message(paste0("fitting a cv glmnet took ", timeDiff[["elapsed"]], " seconds"))
+
+
+}
+
+
+
+
+assessModel <- function(){
+
+  predTrain <- predict.glmnet(lasso.binomial, newx = data.matrix(trainDf[, indepVars]), s = min(lasso.binomial$lambda), type = "response")
+  predTrain <- sapply(predTrain, function(x){ 1 / (1 + exp(-x))})
+
+  predTest <- predict.glmnet(lasso.binomial, newx = data.matrix(testDf[, indepVars]), s = min(lasso.binomial$lambda), type = "response")
+  predTest <- sapply(predTest, function(x){ 1 / (1 + exp(-x))})
+
+  indices <- sample(1:nrow(trainDf), 1e5)
+  roc(response = trainDf$IsDownloaded[indices], predictor = as.vector(predTrain[indices])
+      , levels = levels(as.factor(trainDf$IsDownloaded)), plot = TRUE)
+
+  indices <- sample(1:nrow(testDf), 1e5)
+  roc(response = testDf$IsDownloaded[indices], predictor = as.vector(predTest[indices])
+      , levels = levels(as.factor(testDf$IsDownloaded)), plot = TRUE)
+
+
+  # Anaconda score
+  testDf$predicted <- predTest
+  testDf <- as.data.table(testDf)
+  testDf[order(predicted), "rankQb" := order(predicted, decreasing = TRUE), by = c( "PERSON_ID", "SEARCHED_TERM",  "SearchTime")]
+
+  setnames(testDf,"PERSON_ID","PIDX")
+  scoreSolr <- scoreAnacondaRanking(rankedSearchDocuments = testDf[testDf$IsDownloaded == 1,], rankColumn = "solrRank")
+  scoreQb <- scoreAnacondaRanking(rankedSearchDocuments = testDf[testDf$IsDownloaded == 1,], rankColumn = "rankQb")
+}
+
+
+runRanking <- function(){
+
+  # horrible:
+  source("util.R")
+  source("explore_data.R")
+  source("ranking.R")
+
+  buildClassificationData()
+  classifData <- processClassificationData(as.data.frame(classifData))
+  splitAnacondaData(dframe = classifData)
+
+}
 

@@ -109,7 +109,7 @@ exploreKnowData <- function(){
 
 
 
-scoreAnacondaRanking <- function(rankedSearchDocuments, rankColumn =  "rankReturnedByKnow"){
+scoreAnacondaRanking <- function(rankedSearchDocuments, rankColumn =  "rankReturnedByKnow", detailed = FALSE){
 
   # add points next to ranks
   result <- merge(rankedSearchDocuments, scoringTable, by.x = rankColumn, by.y = "rank", all.x = TRUE)
@@ -118,15 +118,20 @@ scoreAnacondaRanking <- function(rankedSearchDocuments, rankColumn =  "rankRetur
   result$SearchTime <- as.character(result$SearchTime)
   result <- as.data.table(result)
 
-  searchScores <- result[, list(score = sum(points),
-                                nHits = sum(isReturnedByKnow == TRUE)), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
+  searchScores <- result[, list(score = sum(points)), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
 
-  # find max score achievable with KNow results
-  searchScores$nHits <- ifelse(searchScores$nHits > 20, 20, searchScores$nHits)
+  if (detailed == TRUE){
 
-  maxScoreTable <- data.frame(nHits = 1:20, maxScore = cumsum(scoringTable$points))
-  searchScores <- as.data.frame(merge(searchScores, maxScoreTable, by = "nHits", all.x = TRUE))
-  searchScores$maxScore[is.na(searchScores$maxScore)] <- 0
+    searchScores <- result[, list(nHits = sum(isReturnedByKnow == TRUE)), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
+
+    # find max score achievable with KNow results
+    searchScores$nHits <- ifelse(searchScores$nHits > 20, 20, searchScores$nHits)
+
+    maxScoreTable <- data.frame(nHits = 1:20, maxScore = cumsum(scoringTable$points))
+    searchScores <- as.data.frame(merge(searchScores, maxScoreTable, by = "nHits", all.x = TRUE))
+    searchScores$maxScore[is.na(searchScores$maxScore)] <- 0
+  }
+
 
   return(searchScores)
 }

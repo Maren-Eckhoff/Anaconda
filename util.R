@@ -1,5 +1,5 @@
 
-CreateDummyVariables <- function(dataA, dataB = c(), categoricalFeatures, referenceLevels = c(), min.count = 10) {
+CreateDummyVariables <- function(dataA, dataB = c(), categoricalFeatures, referenceLevels = c(), min.count = 10, verbose = TRUE) {
 
   if (length(referenceLevels) == 0){
     referenceLevels <- vector(mode = "character", length = length(categoricalFeatures))
@@ -11,6 +11,7 @@ CreateDummyVariables <- function(dataA, dataB = c(), categoricalFeatures, refere
 
   for (feature in categoricalFeatures){
 
+   # message(paste0("processing ", as,character(feature)))
     featureHistogram <- table(dataA[, feature])
 
     # get reference level as the most frequent category, unless some reference
@@ -24,17 +25,19 @@ CreateDummyVariables <- function(dataA, dataB = c(), categoricalFeatures, refere
 
     # convert all levels but the reference one to binary values, and add them to the data frame
     dummyVars <- c()
-    for (level in setdiff(names(featureHistogram), crtReferenceLevel)) {
+
+    myLevels <- names(featureHistogram)[featureHistogram > min.count]
+    message(paste0("levels: ", paste(myLevels, collapse = ", ")))
+
+    for (level in setdiff(myLevels, crtReferenceLevel)) {
       friendlyLevel <- gsub("\\s", "", level)
       friendlyLevel <- gsub("-", "", friendlyLevel)
       friendlyLevel <- gsub("/", "", friendlyLevel)
       crtDummyVar <- paste(feature, friendlyLevel, sep = ".")
-      if (nrow(dataA[dataA[, feature] == level,]) > min.count){
         dataA[, crtDummyVar] <- ifelse(dataA[, feature] == level, 1, 0)
         dataB[, crtDummyVar] <- ifelse(dataB[, feature] == level, 1, 0)
-      } else {
-        message(paste0("omitting dummy variable ", as.character(friendlyLevel), " due to finding less than ", as.character(min.count), " activations"))
-      }
+        #message(paste0("omitting dummy variable ", as.character(friendlyLevel), " due to finding less than ", as.character(min.count), " activations"))
+
 
       dummyVars <- c(dummyVars, crtDummyVar)
     }

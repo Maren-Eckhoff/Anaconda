@@ -59,7 +59,8 @@ local_env <- function(person = Sys.info()["effective_user"]) {
          maren.eckhoff = list(
            basePath = "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/Beat_the_KNOW_search/",
            basePath2 = "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/Beat the Know seacrh - new data 04-08/",
-           basePath3 = "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/Beat the Know seacrh - new data 04-14/"
+           basePath3 = "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/Beat the Know seacrh - new data 04-14/",
+           basePath4 = "/Users/maren.eckhoff/Documents/learning/Anaconda\ competition/data/"
          )
   )
 }

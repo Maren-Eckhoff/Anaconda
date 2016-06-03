@@ -54,7 +54,7 @@ processSearchData <- function(){
 }
 
 
-
+# keep only solr search data with results.
 meltSolrResults <- function(){
 
   # prepare solrSearch table
@@ -73,6 +73,7 @@ exploreDocData <- function(){
 }
 
 
+# 
 exploreKnowData <- function(){
 
   if (!exists("searchDataProcessed")){searchDataProcessed <- processSearchData()}
@@ -109,8 +110,11 @@ exploreKnowData <- function(){
 
 
 
+# rankedSearchDocuments is a document with columns
+# c("SEARCHED_TERM", "PIDX", "SearchTime", document, rank)
+# for documents that have been downloaded in the searchData.
 scoreAnacondaRanking <- function(rankedSearchDocuments, rankColumn =  "rankReturnedByKnow", detailed = FALSE){
-
+  
   # add points next to ranks
   result <- merge(rankedSearchDocuments, scoringTable, by.x = rankColumn, by.y = "rank", all.x = TRUE)
   result$points[is.na(result$points)] <- 0

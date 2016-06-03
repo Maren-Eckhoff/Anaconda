@@ -37,15 +37,13 @@ searchData3 <- read.csv(paste0(env$basePath, "20160211_SearchDownload_part3.csv"
 searchData <- as.data.table(rbind(searchData1,searchData2,searchData3))
 rm(list = c("searchData1","searchData2","searchData3"))
 
-
-
-
 # evaluation data
-evalData <- as.data.table(read.csv(paste0(env$basePath, "Evaluation Data Set.csv"), header = T))
+# evalData <- as.data.table(read.csv(paste0(env$basePath, "Evaluation Data Set.csv"), header = T))
 # submission file
-submissionData <- as.data.table(read.csv(paste0(env$basePath, "Submission_File.csv"), header = T))
+submissionDataDetail <- as.data.table(read.csv(paste0(env$basePath4, "DetailSubmissionFile.csv"), header = T))
+submissionDataSimple <- as.data.table(read.csv(paste0(env$basePath4, "RevisedSubmissionFile.csv"), header = T))
 
-all.equal(evalData, submissionData)
+# all.equal(evalData, submissionData)
 # [1] TRUE
 # the two data sets are the same.
 

@@ -154,6 +154,8 @@ load_libs <- function() {
     "ROCR",
     "pROC",
     "doMC"
+
+    "tm"
   )
 
   # load libraries and install if necessary

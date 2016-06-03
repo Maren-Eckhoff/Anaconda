@@ -61,7 +61,6 @@ meltSolrResults <- function(){
   solrSearchWithResult <- solrSearchData[!solrSearchData$Results == "",]
   solrSearchWithResult <- solrSearchWithResult[, strsplit(as.character(Results), ",", fixed = T), by = terms]
   colnames(solrSearchWithResult) <- c("terms", "docID")
-  solrSearchWithResult <- solrSearchWithResult[, solrRank := 1:.N, by = terms]
 
   return(solrSearchWithResult)
 }
@@ -126,7 +125,7 @@ scoreAnacondaRanking <- function(rankedSearchDocuments, rankColumn =  "rankRetur
 
   if (detailed == TRUE){
 
-    searchScores <- result[, list(nHits = sum(isReturnedByKnow == TRUE)), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
+    searchScores <- result[, list(nHits = sum(IsDownloaded == TRUE)), by = c("SEARCHED_TERM", "PIDX", "SearchTime")]
 
     # find max score achievable with KNow results
     searchScores$nHits <- ifelse(searchScores$nHits > 20, 20, searchScores$nHits)

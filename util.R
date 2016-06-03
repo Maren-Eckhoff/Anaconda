@@ -33,6 +33,7 @@ CreateDummyVariables <- function(dataA, dataB = c(), categoricalFeatures, refere
       friendlyLevel <- gsub("\\s", "", level)
       friendlyLevel <- gsub("-", "", friendlyLevel)
       friendlyLevel <- gsub("/", "", friendlyLevel)
+      friendlyLevel <- tm::removePunctuation(friendlyLevel)
       crtDummyVar <- paste(feature, friendlyLevel, sep = ".")
         dataA[, crtDummyVar] <- ifelse(dataA[, feature] == level, 1, 0)
         dataB[, crtDummyVar] <- ifelse(dataB[, feature] == level, 1, 0)

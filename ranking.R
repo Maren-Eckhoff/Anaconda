@@ -104,9 +104,11 @@ processClassificationData <- function(dframe){
   message(paste0("Categorical Independent Variables: ", paste(categoricalVars, collapse = ", ")))
 
   # build dummy vars
-  out <- CreateDummyVariables(dataA = dframe, categoricalFeatures = categoricalVars, min.count = nrow(dframe) * 0.05)
+  out <- CreateDummyVariables(dataA = dframe, dataB = as.data.frame(bound_dt),categoricalFeatures = categoricalVars, min.count = nrow(dframe) * 0.05)
   dframe <- out$first
+  submissionFeatures <- out$second
 
+  assign("submissionFeatures", submissionFeatures)
   return(dframe)
 }
 
@@ -160,6 +162,13 @@ fitModel <- function(){
   timeDiff <- proc.time() - startTime
   message(paste0("fitting a cv glmnet took ", timeDiff[["elapsed"]], " seconds"))
 
+  trainDf$IsDownloaded <- as.factor(trainDf$IsDownloaded)
+  startTime <- proc.time()
+  fitted.forest <- randomForest(as.formula(paste(depVar,  ' ~ .', sep = ''))
+                                     , data = trainDf[, c(depVar,indepVars)], importance = TRUE, ntree = 20)
+  timeDiff <- proc.time() - startTime
+  message(paste0("fitting a random forest took ", timeDiff[["elapsed"]], " seconds"))
+
 
 }
 
@@ -174,6 +183,9 @@ assessModel <- function(){
   predTest <- predict.glmnet(lasso.binomial, newx = data.matrix(testDf[, indepVars]), s = min(lasso.binomial$lambda), type = "response")
   predTest <- sapply(predTest, function(x){ 1 / (1 + exp(-x))})
 
+  #predTest <- predict(fitted.forest, newdata = testDf, type = "prob")
+  predSubmit <- pre
+
   indices <- sample(1:nrow(trainDf), 1e5)
   roc(response = trainDf$IsDownloaded[indices], predictor = as.vector(predTrain[indices])
       , levels = levels(as.factor(trainDf$IsDownloaded)), plot = TRUE)
@@ -181,6 +193,8 @@ assessModel <- function(){
   indices <- sample(1:nrow(testDf), 1e5)
   roc(response = testDf$IsDownloaded[indices], predictor = as.vector(predTest[indices])
       , levels = levels(as.factor(testDf$IsDownloaded)), plot = TRUE)
+
+  corrplot(as.matrix(lasso.binomial$beta), is.corr = FALSE)
 
 
   # Anaconda score
@@ -191,7 +205,22 @@ assessModel <- function(){
   setnames(testDf,"PERSON_ID","PIDX")
   scoreSolr <- scoreAnacondaRanking(rankedSearchDocuments = testDf[testDf$IsDownloaded == 1,], rankColumn = "solrRank")
   scoreQb <- scoreAnacondaRanking(rankedSearchDocuments = testDf[testDf$IsDownloaded == 1,], rankColumn = "rankQb")
+  scoreMax <- as.data.table(scoreAnacondaRanking(rankedSearchDocuments = testDf[testDf$IsDownloaded == 1,]
+                                                 , rankColumn = "solrRank", detailed = TRUE))
+
+
+  setnames(scoreSolr, "score","scoreSolr")
+  setkeyv(scoreSolr, c( "PIDX", "SEARCHED_TERM",  "SearchTime"))
+  setkeyv(scoreQb, c( "PIDX", "SEARCHED_TERM",  "SearchTime"))
+  setkeyv(scoreMax, c( "PIDX", "SEARCHED_TERM",  "SearchTime"))
+  allScores <- scoreQb[scoreSolr]
+  setkeyv(allScores, c( "PIDX", "SEARCHED_TERM",  "SearchTime"))
+  allScores <- scoreMax[allScores]
+
+
+
 }
+
 
 
 runRanking <- function(){
@@ -207,3 +236,57 @@ runRanking <- function(){
 
 }
 
+
+
+prepSubmissionData <- function(){
+
+
+  setnames(bound_dt, "Rank", "solrRank")
+  bound_dt[, KO_ID := as.integer(KO_ID)]
+
+  # join with Document Cols
+  processDocumentData()
+  docCols <- c( "DOC.ID"
+                , "Authored.date"
+                , "KDO"
+                , "Shelf.life"
+                , "Last.Review.Date"
+                , "Recommended.use"
+                , "Content.type"
+                , "State"
+                , "Downloads.12.months."
+                , "Downloads.24.months.")
+
+  documentData <- documentData[, docCols, with = FALSE]
+  documentData <- documentData[complete.cases(documentData)]
+
+  setkey(documentData, DOC.ID)
+  setkey(bound_dt, KO_ID)
+  result <- documentData[bound_dt, nomatch=0]
+  # only doc authored before the date of search
+ # result <- result[as.Date(result$SearchTime) > result$Authored.date]
+
+
+  # join with Person Cols
+  processPersonData()
+  personCols <- c("PERSON_ID"
+                  , "HIRE_DATE"
+                  , "POSITION_CODE"
+                  , "FUNCTIONAL_AREA"
+                  , "L2_DEPARTMENT_NAME"
+                  , "Role"
+                  , "GENDER")
+
+  personData <- personData[, personCols, with = FALSE]
+  personData <- personData[complete.cases(personData)]
+
+  setkey(personData, PERSON_ID)
+  setkey(result, PIDX)
+  result <- personData[result, nomatch=0]
+
+  result[, seniorityInDays := as.integer(as.Date("2015-06-01") - HIRE_DATE),]
+
+  submissionData
+
+
+}

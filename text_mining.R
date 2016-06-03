@@ -4,6 +4,8 @@ library('tm')
 install.packages('wordcloud')
 library('wordcloud')
 library('stringr')
+install.packages('stringdist')
+library('stringdist')
 
 #read data from csv files
 DocumentDetails_Part1 <- read.csv('/Users/musa.bilal/Desktop/anaconda/Data/Beat_the_KNOW_search/20160211_DocumentDetails_Part1.csv')
@@ -21,6 +23,11 @@ Submission_File <- read.csv('/Users/musa.bilal/Desktop/anaconda/Data/Beat_the_KN
 
 #load Rdata
 load('/Users/musa.bilal/Desktop/anaconda/Data/anaconda_data.RData')
+
+save.image('/Users/musa.bilal/Desktop/anaconda/Data/anaconda_data_new.RData')
+save.image('/Users/musa.bilal/Desktop/anaconda/Data/anaconda_data_new_final.RData')
+
+load('/Users/musa.bilal/Desktop/anaconda/Data/anaconda_data_new_final.RData')
 
 #merge files into single dataframe
 doc_details <- rbind(DocumentDetails_Part1,DocumentDetails_Part2,DocumentDetails_Part3)
@@ -67,7 +74,7 @@ title_corpus <- tm_map(title_corpus, removeWords, stopwords("english"),lazy=TRUE
 title_corpus <- tm_map(title_corpus, removePunctuation,lazy=TRUE)
 # Eliminate extra white spaces
 title_corpus <- tm_map(title_corpus, stripWhitespace,lazy=TRUE)
-strwrap(title_corpus[[40]])
+strwrap(title_corpus[[500]])
 
 #Stemming abstract by keywords
 abstract_corpus<-Corpus(VectorSource(doc_details$Short.Abstract))
@@ -88,17 +95,57 @@ abstract_corpus <- tm_map(abstract_corpus, removeWords, stopwords("english"),laz
 abstract_corpus <- tm_map(abstract_corpus, removePunctuation,lazy=TRUE)
 # Eliminate extra white spaces
 abstract_corpus <- tm_map(abstract_corpus, stripWhitespace,lazy=TRUE)
-strwrap(abstract_corpus[[1000]])
+strwrap(abstract_corpus[[200]])
 
 #string comparisons between search queries and document abstracts
 for (i in 1:100) {
+  temp=0
   for (j in 1:100) {
     cat(length(intersect(as.vector(unlist(strsplit(strwrap(search_corpus[[i]]), " "))),as.vector(unlist(strsplit(strwrap(abstract_corpus[[j]]), " "))))))
   }
 }
 
+searchMatching <- function(numOfSearches=49509,numOfAbstractsAndTitles=54888) {
+  search_doc_matrix <- data.frame(search_terms=as.character(),doc_id=as.integer(),score=as.numeric())
+  for (i in 1:numOfSearches) {
+    abstract_temp=rep(0,length(unlist(strsplit(strwrap(search_corpus[[i]]), " "))))
+    title_temp=rep(0,length(unlist(strsplit(strwrap(search_corpus[[i]]), " "))))
+    doc_no <- 1
+    for (k in 1:length(unlist(strsplit(strwrap(search_corpus[[1]]), " ")))) {
+      for (j in 1:numOfAbstractsAndTitles) {
+        abstract_temp <- adist(as.vector(unlist(strsplit(strwrap(search_corpus[[i]]), " ")))[k],
+                               as.vector(unlist(strsplit(strwrap(abstract_corpus[[j]]), " "))))
+        abstract_score = mean(abstract_temp) * (min(abstract_temp)+1)
+      
+        title_temp <- adist(as.vector(unlist(strsplit(strwrap(search_corpus[[i]]), " ")))[k],
+                            as.vector(unlist(strsplit(strwrap(title_corpus[[j]]), " "))))
+        title_score = mean(title_temp) * (min(title_temp)+1)
+      }
+      abstract_temp[k] <- abstract_score
+      title_temp[k] <- title_score
+      abstract_final_score <- mean(abstract_temp)
+      title_final_score <- mean(title_temp)
+      final_score <- (0.7 * (title_final_score)) + (0.3 * (abstract_final_score))
+      cat("final abstract score",abstract_final_score,'\n')
+      cat("final title score",title_final_score,'\n')
+      cat("final score",final_score,'\n\n')
+      #rbind(search_details$SEARCHED_TERM[i],doc_details$DOC.ID[doc_no])
+    }
+  }
+}
+
+searchMatching()
+
+cat(length(intersect(as.vector(unlist(strsplit(strwrap(search_corpus[[i]]), " "))),as.vector(unlist(strsplit(strwrap(abstract_corpus[[j]]), " "))))))
+rep(0,3)
+
+
 #Stemming search querries by keywords
-search_corpus<-Corpus(VectorSource(search_details$SEARCHED_TERM))
+search_corpus<-Corpus(VectorSource(Evaluation_Data_Set$SEARCHED_TERM[1:49509]))
+temp_search_corpus<-search_corpus
+
+
+search_corpus<-temp_search_corpus
 toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
 search_corpus <- tm_map(search_corpus, toSpace, "/",lazy=TRUE)
 search_corpus <- tm_map(search_corpus, toSpace, "@",lazy=TRUE)
@@ -116,8 +163,11 @@ search_corpus <- tm_map(search_corpus, removeWords, stopwords("english"),lazy=TR
 search_corpus <- tm_map(search_corpus, removePunctuation,lazy=TRUE)
 # Eliminate extra white spaces
 search_corpus <- tm_map(search_corpus, stripWhitespace,lazy=TRUE)
-strwrap(search_corpus[20])
+strwrap(search_corpus[11])
 
+length(unlist(strsplit(strwrap(search_corpus[[1]]), " ")))
+
+strsplit(strwrap(search_corpus[[10]]), " ")
 merging <- merge(doc_details,eng_details,by.x="KDO",by.y="PRIMARY_INDUSTRY_PRACTICE")
 
 
